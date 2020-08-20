@@ -83,17 +83,20 @@
 			});
 	
 			elevator.on("passing_floor", function(floorNum, direction) {
+				removeUnnecessaryStops(elevator);
 				// Stop at the floor if the number is pressed
 				const pressedFloors = elevator.getPressedFloors();
-				if (pressedFloors.includes(floorNum)) {
+				if (pressedFloors.includes(floorNum)  && elevator.loadFactor() > 0.5) {
 					moveToFrontOfQueue(floorNum);
 				}
 	
 				// Pick up passengers if elevator can fit them
 				if (
-					elevator.loadFactor() < 1
-					&& (floors[floorNum].buttonStates.up && direction === 'up')
-					|| (floors[floorNum].buttonStates.down && direction === 'down')
+					elevator.loadFactor() < 0.7
+					&& (
+						(floors[floorNum].buttonStates.up && direction === 'up')
+						|| (floors[floorNum].buttonStates.down && direction === 'down')
+					)
 				) {
 					moveToFrontOfQueue(floorNum);
 				}
@@ -102,6 +105,7 @@
 			
 	
 			elevator.on("stopped_at_floor", function(floorNum) {
+				removeUnnecessaryStops(elevator);
 				// Remove future stops at this floor from the queue
 				let placeInQueue = -2;
 				while (placeInQueue !== -1) {
@@ -149,6 +153,12 @@
 							}
 						}
 					}
+
+					// If elevator is full, drop off passengers
+					if (elevator.loadFactor() > 0.7 && elevator.getPressedFloors().length) {
+						moveToFrontOfQueue(elevator.getPressedFloors()[0])
+					}
+
 					let nextFloor = elevator.destinationQueue[0];
 	
 					elevator.goingUpIndicator(nextFloor > floorNum);
@@ -178,6 +188,22 @@
 			}
 
 		});
+
+		const removeUnnecessaryStops = (elevator) => {
+			if (elevator.destinationQueue.length) {
+				let nextFloor = elevator.destinationQueue[0];
+				// Check that next scheduled stop is still necessary
+				if (
+					!elevator.getPressedFloors().includes(nextFloor) 
+					&& !floors[nextFloor].buttonStates.up
+					&& !floors[nextFloor].buttonStates.down
+				) {
+					elevator.destinationQueue.shift();
+					elevator.checkDestinationQueue();
+					removeUnnecessaryStops(elevator);
+				}
+			}
+		}
 	},
 	update: function(dt, elevators, floors) {
 		// We normally don't need to do anything here
