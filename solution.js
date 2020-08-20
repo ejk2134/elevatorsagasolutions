@@ -21,6 +21,7 @@
 				&& (floors[floorNum].buttonStates.up && direction === 'up')
 				|| (floors[floorNum].buttonStates.down && direction === 'down')
 			) {
+				console.log('stopping to pick up')
 				moveToFrontOfQueue(floorNum);
 			}
 		});
@@ -35,6 +36,18 @@
 		})
 
 		elevator.on("stopped_at_floor", function(floorNum) {
+			// Remove future stops at this floor from the queue
+			let placeInQueue = -2;
+			while (placeInQueue !== -1) {
+				placeInQueue = elevator.destinationQueue.findIndex((queuedDestination) => {
+					return queuedDestination === floorNum;
+				});
+				if (placeInQueue !== -1) {
+					elevator.destinationQueue.splice(placeInQueue, 1);
+				}
+			}
+			elevator.checkDestinationQueue();
+
 			if (elevator.destinationQueue.length) {
 				
 				// Is elevator going up?
@@ -86,11 +99,14 @@
 		});
 
 		const moveToFrontOfQueue = (floorNum) => {
-			const placeInQueue = elevator.destinationQueue.findIndex((queuedDestination) => {
-				return queuedDestination === floorNum;
-			});
-			if (placeInQueue !== -1) {
-				elevator.destinationQueue.splice(placeInQueue, 1);
+			let placeInQueue = -2;
+			while (placeInQueue !== -1) {
+				placeInQueue = elevator.destinationQueue.findIndex((queuedDestination) => {
+					return queuedDestination === floorNum;
+				});
+				if (placeInQueue !== -1) {
+					elevator.destinationQueue.splice(placeInQueue, 1);
+				}
 			}
 			elevator.destinationQueue.unshift(floorNum);
 			elevator.checkDestinationQueue();
